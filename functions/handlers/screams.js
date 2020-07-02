@@ -1,7 +1,8 @@
 const { db } = require("../util/admin");
+const { user } = require("firebase-functions/lib/providers/auth");
 
 exports.getAllScreams = (req, res) => {
-  db.collection("screems")
+  db.collection("screams")
     .orderBy("createdAt", "desc")
     .get()
     .then((data) => {
@@ -29,7 +30,7 @@ exports.postOneScream = (req, res) => {
     createdAt: new Date().toISOString(),
   };
 
-  db.collection("screems")
+  db.collection("screams")
     .add(newScream)
     .then((doc) => {
       res.json({ message: `document ${doc.id} created successfully` });
@@ -37,5 +38,65 @@ exports.postOneScream = (req, res) => {
     .catch((err) => {
       res.status(500).json({ error: "something went wrong" });
       console.error(err);
+    });
+};
+
+// fetch one scream
+exports.getScream = (req, res) => {
+  let screamData = {};
+  db.doc(`/screams/${req.params.screamId}`)
+    .get()
+    .then((doc) => {
+      if (!doc.exists) {
+        return res.status(404).json({ error: "scream not found" });
+      }
+      screamData = doc.data();
+      screamData.screamId = doc.id;
+      return db
+        .collection("comments")
+        .orderBy("createdAt", "desc")
+        .where("screamId", "==", req.params.screamId)
+        .get();
+    })
+    .then((data) => {
+      screamData.comments = [];
+      data.forEach((doc) => {
+        screamData.comments.push(doc.data());
+      });
+      return res.json(screamData);
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ error: err.code });
+    });
+};
+
+// add comment to scream
+exports.commentOnScream = (req, res) => {
+  if (req.body.body.trim() === "")
+    return res.status(400).json({ error: "Must not be empty" });
+
+  const newComment = {
+    body: req.body.body,
+    createdAt: new Date().toISOString(),
+    screamId: req.params.screamId,
+    userHandle: req.user.handle,
+    userImage: req.user.imageUrl,
+  };
+
+  db.doc(`/screams/${req.params.screamId}`)
+    .get()
+    .then((doc) => {
+      if (!doc.exists) {
+        return res.status(404).json({ error: "Scream does not exist" });
+      }
+      return db.collection("comments").add(newComment);
+    })
+    .then(() => {
+      res.json(newComment);
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ error: "someting went wrong" });
     });
 };
