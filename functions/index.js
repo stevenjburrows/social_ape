@@ -6,6 +6,9 @@ const {
   postOneScream,
   getScream,
   commentOnScream,
+  likeScream,
+  unlikeScream,
+  deleteScream,
 } = require("./handlers/screams");
 const {
   signup,
@@ -34,5 +37,8 @@ app.post("/login", login);
 app.post("/user/image", FBAuth, uploadImage);
 app.post("/user", FBAuth, addUserDetails);
 app.get("/user", FBAuth, getAuthenticatedUser);
+app.get("/scream/:screamId/like", FBAuth, likeScream);
+app.get("/scream/:screamId/unlike", FBAuth, unlikeScream);
+app.delete("/scream/:screamId", FBAuth, deleteScream);
 
 exports.api = functions.region("europe-west3").https.onRequest(app);
